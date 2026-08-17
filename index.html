@@ -1,0 +1,1274 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Consulta a especialistas · Biodiversidad de El Salvador 2026 · MARN–UICN</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Spectral:ital,wght@0,300;0,400;0,600;1,400&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+
+<!--
+  ═══════════════════════════════════════════════════════════════════════
+  FORMULARIO DE CONSULTA A ESPECIALISTAS
+  Actualización del Estado del Conocimiento de la Biodiversidad
+  de El Salvador · MARN – UICN · 2026
+
+  Archivo único. No requiere servidor ni instalación: ábralo en cualquier
+  navegador o súbalo a un hosting estático.
+
+  PARA PONERLO EN OPERACIÓN
+  1. Edite el bloque CONFIG (abajo) con el correo y teléfono del equipo.
+  2. Cree la hoja de cálculo receptora siguiendo receptor_respuestas.gs y
+     pegue en ENDPOINT la URL de la aplicación web que entrega Apps Script
+     (la que termina en /exec).
+  3. Si deja ENDPOINT vacío, el formulario funciona igual: al terminar,
+     quien responde descarga su registro en JSON y puede enviarlo por
+     correo. Sirve como respaldo si el envío llegara a fallar.
+
+  PARA CAMBIAR LAS PREGUNTAS
+  Todo el cuestionario vive en la constante ESQUEMA, más abajo. Agregue,
+  quite o reordene objetos ahí; la interfaz se reconstruye sola. Si cambia
+  las preguntas, borre la fila 1 de la hoja para que los encabezados se
+  regeneren.
+  ═══════════════════════════════════════════════════════════════════════
+-->
+
+<style>
+  :root{
+    --hoja:#F1F4F0;          /* papel de montaje, verde grisáceo frío */
+    --hoja-2:#FAFBF9;        /* campo claro */
+    --tinta:#18211C;         /* tinta de rotulación */
+    --tinta-2:#5C6862;       /* tinta desvanecida */
+    --verde:#1F6152;         /* determinación */
+    --verde-claro:#DCE9E3;
+    --sepia:#8A6A2F;         /* sello de catálogo */
+    --linea:#C7D1CA;
+    --linea-fuerte:#9FAEA6;
+    --alerta:#9B3B2E;
+    --radio:2px;
+    --gutter:74px;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html{-webkit-text-size-adjust:100%}
+  body{
+    background:var(--hoja);
+    color:var(--tinta);
+    font-family:'IBM Plex Sans',system-ui,sans-serif;
+    font-size:15.5px;line-height:1.55;
+    padding:0 18px 80px;
+  }
+
+  /* ── aviso de modo revisión ─────────────────────────────────── */
+  .aviso-revision{
+    background:#FBF3E2;border-bottom:1px solid #E0CDA4;color:#6B5218;
+    margin:0 -18px;padding:9px 18px;font-size:12.5px;line-height:1.45;
+  }
+  .aviso-revision b{color:#5A430F}
+  .aviso-revision code{
+    font-family:'IBM Plex Mono',monospace;font-size:11.5px;
+    background:#F2E4C6;padding:1px 5px;border-radius:2px;
+  }
+  @media print{ .aviso-revision{display:none} }
+
+  /* ── banda institucional ────────────────────────────────────── */
+  .banda{
+    background:#fff;border-bottom:2px solid var(--verde);
+    margin:0 -18px;padding:16px 18px;
+  }
+  .banda-fila{
+    max-width:860px;margin:0 auto;display:flex;align-items:center;gap:20px;flex-wrap:wrap;
+  }
+  .logos{display:flex;align-items:center;gap:14px;flex:none}
+  .logo{height:52px;width:auto;display:block}
+  .logo.faltante{
+    height:52px;min-width:74px;display:flex;align-items:center;justify-content:center;
+    border:1px dashed var(--linea-fuerte);color:var(--tinta-2);
+    font-family:'IBM Plex Mono',monospace;font-size:11px;letter-spacing:.08em;
+  }
+  .logo-sep{width:1px;height:34px;background:var(--linea)}
+  .banda-txt{min-width:230px}
+  .banda-titulo{
+    font-family:'Spectral',Georgia,serif;font-weight:600;font-size:17.5px;
+    line-height:1.2;color:var(--tinta);letter-spacing:-.005em;
+  }
+  .banda-sub{font-size:11.5px;color:var(--tinta-2);margin-top:4px;line-height:1.35}
+
+  /* ── selector taxonómico ────────────────────────────────────── */
+  .taxo-bloque{
+    border:1px solid var(--linea-fuerte);border-left:3px solid var(--verde);
+    padding:15px 17px;margin-bottom:14px;background:#fff;
+  }
+  .taxo-cab{display:flex;align-items:baseline;gap:12px;margin-bottom:12px}
+  .taxo-num{
+    font-family:'IBM Plex Mono',monospace;font-size:10.5px;letter-spacing:.12em;
+    text-transform:uppercase;color:var(--sepia);
+  }
+  .taxo-quitar{
+    margin-left:auto;background:none;border:none;color:var(--alerta);
+    font-size:12.5px;padding:2px 4px;text-decoration:underline;
+  }
+  .taxo-nivel{margin-top:13px}
+  .taxo-nivel>.et{
+    display:block;font-size:12px;color:var(--tinta-2);margin-bottom:5px;
+    font-family:'IBM Plex Mono',monospace;letter-spacing:.06em;
+  }
+  .taxo-nivel .filo{
+    font-size:11px;letter-spacing:.09em;text-transform:uppercase;color:var(--sepia);
+    font-family:'IBM Plex Mono',monospace;margin:10px 0 3px;
+  }
+  .taxo-vacio{font-size:13px;color:var(--tinta-2);font-style:italic;padding:3px 0}
+  .taxo-mas{
+    background:transparent;border:1px dashed var(--linea-fuerte);color:var(--verde);
+    padding:9px 16px;font-size:14px;width:100%;max-width:640px;
+  }
+  .taxo-mas:hover{border-color:var(--verde);background:var(--verde-claro)}
+
+  /* ── cinta superior ─────────────────────────────────────────── */
+  .cinta{
+    position:sticky;top:0;z-index:20;
+    background:var(--hoja);
+    border-bottom:1px solid var(--linea);
+    margin:0 -18px 0;padding:11px 18px 0;
+  }
+  .cinta-fila{
+    max-width:860px;margin:0 auto;
+    display:flex;align-items:baseline;gap:14px;flex-wrap:wrap;
+  }
+  .cinta-titulo{
+    font-family:'Spectral',Georgia,serif;font-size:15px;font-weight:600;
+    letter-spacing:.01em;
+  }
+  .folio{
+    font-family:'IBM Plex Mono',monospace;font-size:11.5px;
+    color:var(--sepia);letter-spacing:.06em;margin-left:auto;
+  }
+  .regla{max-width:860px;margin:9px auto 0;height:3px;background:var(--linea);position:relative}
+  .regla i{position:absolute;inset:0 auto 0 0;background:var(--verde);width:0;transition:width .45s cubic-bezier(.2,.7,.3,1)}
+  .regla-marcas{max-width:860px;margin:0 auto;display:flex;justify-content:space-between;padding-top:5px;padding-bottom:8px}
+  .regla-marcas span{
+    font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--tinta-2);
+    letter-spacing:.08em;
+  }
+  .regla-marcas span.on{color:var(--verde)}
+
+  /* ── pliego ─────────────────────────────────────────────────── */
+  .pliego{
+    max-width:860px;margin:26px auto 0;
+    background:var(--hoja-2);
+    border:1px solid var(--linea-fuerte);
+    position:relative;
+    padding:38px 40px 34px;
+  }
+  /* esquinas de montaje */
+  .pliego::before,.pliego::after{
+    content:"";position:absolute;width:16px;height:16px;pointer-events:none;
+  }
+  .pliego::before{top:7px;left:7px;border-top:1px solid var(--linea-fuerte);border-left:1px solid var(--linea-fuerte)}
+  .pliego::after{bottom:7px;right:7px;border-bottom:1px solid var(--linea-fuerte);border-right:1px solid var(--linea-fuerte)}
+
+  .membrete{border-bottom:1px solid var(--linea);padding-bottom:22px;margin-bottom:26px}
+  .membrete .eyebrow{
+    font-family:'IBM Plex Mono',monospace;font-size:10.5px;letter-spacing:.14em;
+    text-transform:uppercase;color:var(--sepia);margin-bottom:12px;
+  }
+  h1{
+    font-family:'Spectral',Georgia,serif;font-weight:400;
+    font-size:clamp(27px,4.4vw,38px);line-height:1.12;letter-spacing:-.012em;
+  }
+  h1 em{font-style:italic;color:var(--verde)}
+  .bajada{margin-top:14px;max-width:60ch;color:var(--tinta-2);font-size:15px}
+  .bajada p+p{margin-top:9px}
+  .bajada .saludo{font-family:'Spectral',Georgia,serif;font-size:16.5px;color:var(--tinta);margin-bottom:10px}
+  .propositos{margin:9px 0 0 0;padding-left:0;list-style:none;counter-reset:p}
+  .propositos li{
+    counter-increment:p;position:relative;padding-left:26px;margin-top:6px;
+  }
+  .propositos li::before{
+    content:counter(p) ".";position:absolute;left:0;top:0;
+    font-family:'IBM Plex Mono',monospace;font-size:12.5px;color:var(--sepia);
+  }
+  .libre{display:flex;gap:9px;align-items:center;margin-top:11px;cursor:pointer;font-size:13.5px;color:var(--tinta-2)}
+  .libre input{accent-color:var(--verde);width:15px;height:15px}
+  input:disabled{color:var(--tinta-2);border-bottom-style:dashed}
+  .aviso{
+    margin-top:18px;border-left:2px solid var(--verde);background:var(--verde-claro);
+    padding:12px 15px;font-size:13.5px;color:#22352E;max-width:62ch;
+  }
+  .aviso b{font-weight:600}
+
+  /* ── secciones ──────────────────────────────────────────────── */
+  .seccion{display:none}
+  .seccion.activa{display:block;animation:entra .34s ease both}
+  @keyframes entra{from{opacity:0;transform:translateY(7px)}to{opacity:1;transform:none}}
+
+  .cabecera-seccion{
+    display:grid;grid-template-columns:var(--gutter) 1fr;
+    border-bottom:1px solid var(--linea);padding-bottom:14px;margin-bottom:26px;
+  }
+  .cabecera-seccion .cod{
+    font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--sepia);
+    letter-spacing:.1em;padding-top:7px;
+  }
+  .cabecera-seccion h2{
+    font-family:'Spectral',Georgia,serif;font-weight:400;font-size:25px;line-height:1.2;
+  }
+  .cabecera-seccion p{margin-top:6px;color:var(--tinta-2);font-size:14px;max-width:58ch}
+
+  /* ── campos ─────────────────────────────────────────────────── */
+  .campo{display:grid;grid-template-columns:var(--gutter) 1fr;margin-bottom:26px}
+  .campo>.cod{
+    font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--tinta-2);
+    letter-spacing:.06em;padding-top:3px;
+  }
+  .campo.error>.cod{color:var(--alerta)}
+  label.rotulo{display:block;font-weight:500;font-size:15px;margin-bottom:3px}
+  .rotulo .req{color:var(--sepia);font-family:'IBM Plex Mono',monospace;font-size:12px}
+  .ayuda{font-size:13px;color:var(--tinta-2);margin-bottom:9px;max-width:60ch}
+  .ayuda em{font-style:italic}
+
+  input[type=text],input[type=email],input[type=tel],select,textarea{
+    width:100%;max-width:520px;font:inherit;font-size:15px;color:var(--tinta);
+    background:transparent;border:none;border-bottom:1px solid var(--linea-fuerte);
+    border-radius:0;padding:6px 2px;transition:border-color .15s,background .15s;
+  }
+  textarea{border:1px solid var(--linea-fuerte);padding:9px 11px;min-height:82px;resize:vertical;max-width:600px;background:#fff}
+  select{max-width:340px;appearance:none;
+    background-image:linear-gradient(45deg,transparent 50%,var(--tinta-2) 50%),linear-gradient(135deg,var(--tinta-2) 50%,transparent 50%);
+    background-position:calc(100% - 13px) 13px,calc(100% - 8px) 13px;background-size:5px 5px,5px 5px;background-repeat:no-repeat;
+    padding-right:30px;}
+  input:focus,select:focus,textarea:focus{outline:none;border-color:var(--verde);background:#fff}
+  input:focus-visible,select:focus-visible,textarea:focus-visible{box-shadow:0 2px 0 0 var(--verde)}
+  .campo.error input,.campo.error select,.campo.error textarea{border-color:var(--alerta)}
+
+  .opciones{display:flex;flex-direction:column;gap:1px;max-width:640px}
+  .opciones.dos{display:grid;grid-template-columns:1fr 1fr;gap:1px 22px}
+  .op{
+    display:flex;gap:10px;align-items:flex-start;
+    padding:6px 8px 6px 2px;cursor:pointer;border-radius:var(--radio);
+    transition:background .12s;
+  }
+  .op:hover{background:var(--verde-claro)}
+  .op input{margin-top:3px;accent-color:var(--verde);width:15px;height:15px;flex:none}
+  .op span{font-size:14.5px;line-height:1.42}
+  .op.deshabilitada{opacity:.42;cursor:not-allowed}
+  .op.deshabilitada:hover{background:transparent}
+  .grupo-titulo{
+    font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:.12em;
+    text-transform:uppercase;color:var(--sepia);margin:14px 0 5px;
+  }
+  .grupo-titulo:first-child{margin-top:2px}
+  .otro-txt{margin-left:25px;max-width:330px!important;font-size:14px!important}
+
+  .escala{display:flex;align-items:center;gap:6px;flex-wrap:wrap;max-width:560px}
+  .escala .pt{
+    flex:1;min-width:52px;border:1px solid var(--linea-fuerte);background:#fff;
+    padding:11px 0;text-align:center;cursor:pointer;font-family:'IBM Plex Mono',monospace;
+    font-size:14px;transition:.14s;
+  }
+  .escala .pt:hover{border-color:var(--verde)}
+  .escala .pt.sel{background:var(--verde);color:#fff;border-color:var(--verde)}
+  .escala-rot{display:flex;justify-content:space-between;max-width:560px;margin-top:6px;
+    font-size:12px;color:var(--tinta-2)}
+
+  .msg-error{color:var(--alerta);font-size:13px;margin-top:7px;display:none}
+  .campo.error .msg-error{display:block}
+  .contador{font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--tinta-2);margin-top:7px}
+
+  /* ── navegación ─────────────────────────────────────────────── */
+  .barra-nav{
+    display:flex;gap:12px;align-items:center;flex-wrap:wrap;
+    border-top:1px solid var(--linea);margin-top:34px;padding-top:20px;
+  }
+  button{font:inherit;cursor:pointer;border-radius:var(--radio);transition:.15s}
+  .btn{
+    background:var(--verde);color:#fff;border:1px solid var(--verde);
+    padding:11px 26px;font-weight:500;font-size:15px;
+  }
+  .btn:hover{background:#164A3E;border-color:#164A3E}
+  .btn-sec{background:transparent;color:var(--tinta);border:1px solid var(--linea-fuerte);padding:11px 20px;font-size:14.5px}
+  .btn-sec:hover{border-color:var(--tinta);background:#fff}
+  .btn:focus-visible,.btn-sec:focus-visible{outline:2px solid var(--sepia);outline-offset:2px}
+  .paso-info{margin-left:auto;font-family:'IBM Plex Mono',monospace;font-size:11.5px;color:var(--tinta-2)}
+  .aviso-nav{width:100%;color:var(--alerta);font-size:13.5px;display:none}
+  .aviso-nav.visible{display:block}
+
+  /* ── boleta final ───────────────────────────────────────────── */
+  .boleta{display:none}
+  .boleta.activa{display:block;animation:entra .4s ease both}
+  .sello{
+    border:1px solid var(--verde);padding:22px 24px;background:var(--verde-claro);
+    margin-bottom:26px;
+  }
+  .sello .cod{font-family:'IBM Plex Mono',monospace;font-size:11px;letter-spacing:.12em;color:var(--verde);text-transform:uppercase}
+  .sello h2{font-family:'Spectral',Georgia,serif;font-weight:400;font-size:26px;margin:7px 0 8px}
+  .sello p{font-size:14.5px;color:#22352E;max-width:58ch}
+  .resumen dl{display:grid;grid-template-columns:minmax(150px,240px) 1fr;gap:0}
+  .resumen dt,.resumen dd{border-top:1px solid var(--linea);padding:9px 0}
+  .resumen dt{font-size:13.5px;color:var(--tinta-2);padding-right:18px}
+  .resumen dd{font-size:14.5px}
+  .resumen dd.vacio{color:var(--tinta-2);font-style:italic}
+  .resumen h3{
+    font-family:'IBM Plex Mono',monospace;font-size:10.5px;letter-spacing:.12em;
+    text-transform:uppercase;color:var(--sepia);margin:26px 0 4px;
+  }
+
+  .pie{
+    max-width:860px;margin:20px auto 0;font-size:12.5px;color:var(--tinta-2);
+    display:flex;gap:16px;flex-wrap:wrap;
+  }
+  .pie a{color:var(--verde)}
+
+  @media (max-width:660px){
+    :root{--gutter:0px}
+    .pliego{padding:26px 20px 26px}
+    .campo,.cabecera-seccion{grid-template-columns:1fr}
+    .campo>.cod,.cabecera-seccion .cod{padding:0 0 3px}
+    .opciones.dos{grid-template-columns:1fr}
+    .resumen dl{grid-template-columns:1fr}
+    .resumen dt{padding-bottom:0;border-bottom:none}
+    .resumen dd{border-top:none;padding-top:2px}
+  }
+  @media (prefers-reduced-motion:reduce){
+    *{animation:none!important;transition:none!important}
+  }
+  @media print{
+    .cinta,.barra-nav,.pie{display:none}
+    body{background:#fff;padding:0}
+    .pliego{border:none;padding:0;max-width:none}
+    .seccion{display:block!important}
+  }
+</style>
+</head>
+<body>
+
+<div class="aviso-revision" id="aviso-revision" hidden>
+  <b>Modo revisión encendido.</b> Los campos obligatorios están desactivados: puede
+  recorrer el formulario sin llenar nada. Antes de enviarlo a los especialistas,
+  ponga <code>MODO_REVISION: false</code> en el bloque CONFIG.
+</div>
+
+<header class="banda">
+  <div class="banda-fila">
+    <div class="logos">
+      <img id="logo-marn" class="logo" alt="MARN">
+      <span class="logo-sep"></span>
+      <img id="logo-uicn" class="logo" alt="UICN">
+    </div>
+    <div class="banda-txt">
+      <h2 class="banda-titulo">Actualización del Estado de la Biodiversidad de El Salvador</h2>
+      <p class="banda-sub">Ministerio de Medio Ambiente y Recursos Naturales · Unión Internacional para la Conservación de la Naturaleza</p>
+    </div>
+  </div>
+</header>
+
+<div class="cinta">
+  <div class="cinta-fila">
+    <span class="cinta-titulo">Consulta a especialistas</span>
+    <span class="folio" id="folio">—</span>
+  </div>
+  <div class="regla"><i id="barra"></i></div>
+  <div class="regla-marcas" id="marcas"></div>
+</div>
+
+<main class="pliego">
+  <div class="membrete" id="membrete">
+    <div class="eyebrow">MARN · UICN · Programa de Biodiversidad: Enlazando el Paisaje Centroamericano</div>
+    <h1>Actualización del Estado del Conocimiento de la <em>Biodiversidad</em> de El Salvador</h1>
+    <div class="bajada">
+      <p class="saludo">Estimado investigador:</p>
+      <p>El Ministerio de Medio Ambiente y Recursos Naturales, con el apoyo de la Unión Internacional para la Conservación de la Naturaleza, desarrolla la Actualización del Estado del Conocimiento de la Biodiversidad de El Salvador, a través del Programa de Biodiversidad: Enlazando el Paisaje Centroamericano.</p>
+      <p>El Salvador, como Parte del Convenio sobre la Diversidad Biológica (CDB), ha actualizado recientemente su Estrategia Nacional de Biodiversidad con un Plan de Acción (ENBPA), alineando sus prioridades con las metas del Marco Mundial de la Biodiversidad Kunming-Montreal (MMBKM). Entre sus metas nacionales destacan la recuperación de poblaciones de vida silvestre, la gestión sostenible de la biodiversidad, el acceso a recursos genéticos y la gestión del conocimiento científico y ancestral. Estas prioridades se relacionan directamente con las metas 4, 5, 6, 13, 14, 20 y 21 del MMBKM.</p>
+      <p>En este proceso su criterio como especialista es relevante para consolidar el conocimiento de la biodiversidad de El Salvador. Por ello, este formulario tiene dos propósitos:</p>
+      <ol class="propositos">
+        <li>Registrar su especialidad.</li>
+        <li>Conocer su disponibilidad para participar de una entrevista sobre el estado de la biodiversidad en su especialidad.</li>
+      </ol>
+      <p>Toma entre 7 y 9 minutos.</p>
+    </div>
+    <div class="aviso">
+      <b>Tratamiento de la información.</b> Sus datos de contacto se usarán únicamente para la coordinación de esta consulta y no se publicarán. Su nombre, afiliación y especialidad aparecerán en la sección de créditos y agradecimientos del documento, salvo que indique lo contrario en la última sección. Los aportes técnicos se citarán como comunicación personal, con fecha y previa confirmación suya.
+    </div>
+  </div>
+
+  <form id="form" novalidate>
+    <div id="secciones"></div>
+    <div class="boleta" id="boleta"></div>
+
+    <div class="barra-nav" id="nav">
+      <button type="button" class="btn-sec" id="btn-atras">&larr;  Anterior</button>
+      <button type="button" class="btn" id="btn-siguiente">Siguiente</button>
+      <span class="paso-info" id="paso-info"></span>
+      <span class="aviso-nav" id="aviso-nav"></span>
+    </div>
+  </form>
+</main>
+
+<div class="pie">
+  <span>Consultas: <a id="pie-correo" href="#">—</a></span>
+  <span id="pie-tel">—</span>
+</div>
+
+<script>
+/* ═══════════════════════════════════════════════════════════════
+   CONFIG — ajuste estos valores
+   ═══════════════════════════════════════════════════════════════ */
+const CONFIG = {
+  CORREO:   'smartinqm@gmail.com',
+  TELEFONO: '+503 7669-6737',
+
+  // Logos institucionales. Coloque los archivos oficiales junto a este
+  // HTML con estos nombres, o escriba aquí otra ruta o una URL.
+  // Si el archivo no existe, en su lugar aparece un recuadro con las
+  // siglas: el formulario nunca se rompe por un logo faltante.
+  LOGO_MARN: 'logo-marn.png',
+  LOGO_UICN: 'logo-uicn.png',
+
+  // URL de la aplicación web de Apps Script (ver receptor_respuestas.gs).
+  // Déjelo vacío para que el formulario solo descargue el registro.
+  ENDPOINT: 'https://script.google.com/macros/s/AKfycby-JFLxzFYKWqzky1rTJeSqz_GHPf6OvSfesH01LsPYFRR3JskNZ4WaDDA0s-yxxnyP/exec',
+
+  // ─────────────────────────────────────────────────────────────
+  // MODO REVISIÓN
+  // En true se apagan los campos obligatorios: se puede recorrer el
+  // formulario entero sin llenar nada, para revisarlo con calma.
+  // Los envíos SÍ siguen llegando a la hoja, así que borre después
+  // las filas de prueba.
+  // Ponga false para dejarlo operativo antes de enviarlo a los
+  // especialistas. Es lo único que hay que cambiar.
+  // ─────────────────────────────────────────────────────────────
+  MODO_REVISION: true
+};
+
+/* ═══════════════════════════════════════════════════════════════
+   TAXONOMÍA — sistema de 7 reinos (Ruggiero et al., 2015)
+   Reino → Filo/División → Clase → Orden.
+   Tomada de «Clasificación de las Especies de El Salvador — hasta el
+   nivel de Orden». Para actualizarla, edite esta constante.
+   ═══════════════════════════════════════════════════════════════ */
+const TAXONOMIA = [
+ {r:"Bacteria (bacterias)", f:[
+   {n:"Cyanobacteria (cianobacterias)", c:[{c:"Cyanophyceae (algas verdeazuladas)",o:["Nostocales (cianobacterias filamentosas)","Chroococcales (cianobacterias unicelulares)"]}]},
+   {n:"Pseudomonadota (Proteobacteria) (proteobacterias)", c:[{c:"Gammaproteobacteria (proteobacterias)",o:["Enterobacterales (enterobacterias)"]}]},
+   {n:"Bacillota (Firmicutes) (grampositivas)", c:[{c:"Bacilli (bacilos y cocos)",o:["Lactobacillales (bacterias del ácido láctico)","Bacillales (bacilos esporulados)"]}]},
+   {n:"Actinomycetota (actinobacterias)", c:[{c:"Actinomycetia (actinobacterias)",o:["Streptomycetales (estreptomicetos)"]}]},
+ ]},
+ {r:"Archaea (arqueas)", f:[
+   {n:"Euryarchaeota (euriarqueotas)", c:[{c:"Methanobacteria (metanógenas)",o:["Methanobacteriales (arqueas productoras de metano)"]}]},
+   {n:"Thermoproteota (crenarqueotas)", c:[{c:"Thermoprotei (termófilas)",o:["Sulfolobales (arqueas termoacidófilas)"]}]},
+ ]},
+ {r:"Protozoa (protozoos)", f:[
+   {n:"Amoebozoa (amebas y mohos mucilaginosos)", c:[{c:"Tubulinea (amebas)",o:["Euamoebida (amebas de vida libre)"]}, {c:"Myxogastrea (mohos mucilaginosos)",o:["Physarales (mohos del limo)"]}]},
+   {n:"Euglenozoa (euglenozoos)", c:[{c:"Euglenoidea (euglenas)",o:["Euglenida (euglenas)"]}, {c:"Kinetoplastea (cinetoplástidos)",o:["Trypanosomatida (tripanosomátidos)"]}]},
+ ]},
+ {r:"Chromista (cromistas)", f:[
+   {n:"Ochrophyta (algas doradas y pardas)", c:[{c:"Bacillariophyceae (diatomeas)",o:["Naviculales (diatomeas pennadas)"]}, {c:"Phaeophyceae (algas pardas)",o:["Dictyotales (algas pardas)"]}]},
+   {n:"Myzozoa (alveolados)", c:[{c:"Dinophyceae (dinoflagelados)",o:["Gonyaulacales (dinoflagelados)"]}, {c:"Aconoidasida (esporozoos parásitos)",o:["Haemosporida (hemosporidios)"]}]},
+   {n:"Ciliophora (ciliados)", c:[{c:"Oligohymenophorea (ciliados)",o:["Peniculida (ciliados de vida libre)"]}]},
+   {n:"Oomycota (oomicetos)", c:[{c:"Oomycetes (mohos acuáticos)",o:["Peronosporales (mildius y tizones)"]}]},
+ ]},
+ {r:"Fungi (hongos)", f:[
+   {n:"Basidiomycota (basidiomicetos)", c:[{c:"Agaricomycetes (setas y hongos de repisa)",o:["Agaricales (setas de sombrero)","Polyporales (hongos de repisa)"]}]},
+   {n:"Ascomycota (ascomicetos)", c:[{c:"Sordariomycetes (mohos y hongos filamentosos)",o:["Hypocreales (hongos entomopatógenos y fitopatógenos)"]}, {c:"Lecanoromycetes (líquenes)",o:["Lecanorales (líquenes)"]}]},
+   {n:"Mucoromycota (mucorales)", c:[{c:"Mucoromycetes (mohos del pan)",o:["Mucorales (mohos filamentosos)"]}]},
+   {n:"Glomeromycota (micorrizas)", c:[{c:"Glomeromycetes (hongos micorrízicos)",o:["Glomerales (micorrizas arbusculares)"]}]},
+ ]},
+ {r:"Plantae (plantas)", f:[
+   {n:"Rhodophyta (algas rojas)", c:[{c:"Florideophyceae (algas rojas)",o:["Ceramiales (algas rojas)"]}]},
+   {n:"Chlorophyta (algas verdes)", c:[{c:"Chlorophyceae (algas verdes)",o:["Chlamydomonadales (algas verdes unicelulares)"]}]},
+   {n:"Bryophyta (musgos)", c:[{c:"Bryopsida (musgos)",o:["Hypnales (musgos pleurocárpicos)"]}]},
+   {n:"Polypodiophyta (helechos)", c:[{c:"Polypodiopsida (helechos)",o:["Polypodiales (helechos comunes)","Cyatheales (helechos arborescentes)"]}]},
+   {n:"Pinophyta (coníferas)", c:[{c:"Pinopsida (coníferas)",o:["Pinales (pinos y cipreses)"]}]},
+   {n:"Cycadophyta (cícadas)", c:[{c:"Cycadopsida (cícadas)",o:["Cycadales (cícadas)"]}]},
+   {n:"Magnoliophyta (Angiospermas) (plantas con flor)", c:[{c:"Magnoliopsida (dicotiledóneas)",o:["Fabales (leguminosas)","Lamiales (labiadas y bignoniáceas)","Malvales (malvas)","Sapindales (sapindales)","Gentianales (rubiáceas y afines)","Laurales (laurales)","Myrtales (mirtos)","Asterales (compuestas)"]}, {c:"Liliopsida (monocotiledóneas)",o:["Poales (gramíneas y afines)","Asparagales (asparagales)","Arecales (palmas)","Zingiberales (zingiberales)"]}]},
+ ]},
+ {r:"Animalia (animales)", f:[
+   {n:"Cnidaria (cnidarios)", c:[{c:"Anthozoa (corales y anémonas)",o:["Scleractinia (corales pétreos)","Actiniaria (anémonas de mar)"]}]},
+   {n:"Mollusca (moluscos)", c:[{c:"Gastropoda (caracoles y babosas)",o:["Stylommatophora (caracoles y babosas terrestres)","Neogastropoda (caracoles marinos)"]}, {c:"Bivalvia (bivalvos)",o:["Arcida (arcas)","Ostreida (ostras)"]}, {c:"Cephalopoda (cefalópodos)",o:["Octopoda (pulpos)"]}]},
+   {n:"Annelida (anélidos)", c:[{c:"Clitellata (lombrices y sanguijuelas)",o:["Crassiclitellata (lombrices de tierra)","Hirudinida (sanguijuelas)"]}]},
+   {n:"Echinodermata (equinodermos)", c:[{c:"Asteroidea (estrellas de mar)",o:["Valvatida (estrellas de mar)"]}, {c:"Echinoidea (erizos de mar)",o:["Camarodonta (erizos regulares)"]}, {c:"Holothuroidea (pepinos de mar)",o:["Holothuriida (pepinos de mar)"]}]},
+   {n:"Arthropoda (artrópodos)", c:[{c:"Insecta (insectos)",o:["Lepidoptera (mariposas y polillas)","Coleoptera (escarabajos)","Hymenoptera (himenópteros)","Diptera (moscas y mosquitos)","Hemiptera (chinches y cigarras)","Orthoptera (ortópteros)","Odonata (libélulas)","Blattodea (cucarachas y termitas)","Mantodea (mantis)"]}, {c:"Arachnida (arácnidos)",o:["Araneae (arañas)","Scorpiones (escorpiones)","Ixodida (garrapatas)"]}, {c:"Malacostraca (crustáceos)",o:["Decapoda (decápodos)","Isopoda (isópodos)"]}, {c:"Chilopoda (ciempiés)",o:["Scolopendromorpha (ciempiés grandes)"]}, {c:"Diplopoda (milpiés)",o:["Spirobolida (milpiés)"]}]},
+   {n:"Chordata (cordados)", c:[{c:"Actinopterygii (peces óseos)",o:["Cichliformes (cíclidos)","Perciformes (perciformes)","Siluriformes (bagres)"]}, {c:"Chondrichthyes (peces cartilaginosos)",o:["Carcharhiniformes (tiburones)","Myliobatiformes (rayas)"]}, {c:"Amphibia (anfibios)",o:["Anura (ranas y sapos)","Caudata (salamandras)","Gymnophiona (cecilias)"]}, {c:"Reptilia (reptiles)",o:["Squamata (lagartos y serpientes)","Testudines (tortugas)","Crocodilia (cocodrilos)"]}, {c:"Aves (aves)",o:["Passeriformes (aves canoras)","Coraciiformes (coraciformes)","Apodiformes (colibríes y vencejos)","Psittaciformes (loros)","Accipitriformes (rapaces diurnas)","Pelecaniformes (pelícanos y garzas)","Cathartiformes (zopilotes)","Columbiformes (palomas)"]}, {c:"Mammalia (mamíferos)",o:["Primates (monos)","Carnivora (carnívoros)","Chiroptera (murciélagos)","Rodentia (roedores)","Artiodactyla (ungulados)","Didelphimorphia (marsupiales)","Cingulata (armadillos)","Pilosa (osos hormigueros)","Lagomorpha (lagomorfos)"]}]},
+ ]},
+];
+
+/* ═══════════════════════════════════════════════════════════════
+   ESQUEMA — el cuestionario completo
+   tipos: texto · correo · tel · parrafo · unica · multiple · lista · escala · taxonomia
+   ═══════════════════════════════════════════════════════════════ */
+const ESQUEMA = [
+{
+  cod:'01', clave:'ident', titulo:'Identificación',
+  intro:'Sus datos de contacto no se harán públicos.',
+  items:[
+    {c:'1.1', id:'nombre', t:'texto', r:true, l:'Nombre completo'},
+    {c:'1.2', id:'grado', t:'unica', r:true, l:'Grado académico más alto',
+      o:['Licenciatura','Maestría','Doctorado','Postdoctorado'], otro:true, dos:true},
+    {c:'1.3', id:'institucion', t:'texto', r:true, l:'Institución u organización que representa',
+      libre:{etiqueta:'Trabajo de forma independiente', valor:'Independiente'}},
+    {c:'1.4', id:'tipo_inst', t:'unica', r:true, l:'Tipo de institución', dos:true,
+      o:['Academia','Museo o herbario','Institución gubernamental','ONG de conservación','Consultoría independiente','Organismo internacional','Investigador independiente'], otro:true},
+    {c:'1.5', id:'cargo', t:'texto', l:'Cargo o posición actual'},
+    {c:'1.6', id:'pais', t:'lista', r:true, l:'País de residencia',
+      o:['El Salvador','Guatemala','Honduras','Nicaragua','Costa Rica','Panamá','Belice','México','Estados Unidos','España','Otro']},
+    {c:'1.7', id:'correo', t:'correo', r:true, l:'Correo electrónico de contacto'},
+    {c:'1.8', id:'correo_alt', t:'correo', l:'Correo alterno', a:'Útil si su correo institucional cambia o caduca.'},
+    {c:'1.9', id:'telefono', t:'tel', l:'Teléfono o WhatsApp', a:'Con código de país. Se usa solo para coordinar la entrevista.'},
+    {c:'1.10', id:'orcid', t:'texto', l:'ORCID', a:'Formato 0000-0000-0000-0000', ph:'0000-0000-0000-0000'},
+    {c:'1.11', id:'perfil', t:'texto', l:'Perfil académico o institucional', a:'ResearchGate, Google Scholar, LinkedIn, página del herbario.', ph:'https://'}
+  ]
+},
+{
+  cod:'02', clave:'especialidad', titulo:'Especialidad taxonómica',
+  intro:'Marque únicamente aquello sobre lo que se considera en capacidad de emitir un juicio técnico fundamentado.',
+  items:[
+    {c:'2.1', id:'grupo', t:'taxonomia', r:true, max:3,
+      l:'Grupo taxonómico de especialidad',
+      a:'Elija el reino y luego el grupo dentro de ese reino. Los órdenes son opcionales, pero mientras más preciso sea el registro, mejor podremos ubicar su aporte en el inventario. Si trabaja en más de un grupo, agregue otra especialidad.'},
+    {c:'2.2', id:'subespecialidad', t:'parrafo', r:true, l:'Precise su sub-especialidad',
+      a:'Ejemplo: «anuros de bosque nuboso, con énfasis en Plectrohyla y Bolitoglossa» o «pteridofitas epífitas de la cordillera de Apaneca-Ilamatepec».'},
+    {c:'2.3', id:'ambito', t:'multiple', r:true, l:'Ámbito geográfico de su experiencia', dos:true,
+      o:['El Salvador — nacional','El Salvador — zona occidental','El Salvador — zona central y paracentral','El Salvador — zona oriental','El Salvador — franja costero-marina y Golfo de Fonseca','Centroamérica / Mesoamérica','Global']},
+    {c:'2.4', id:'ecosistemas', t:'multiple', l:'Ecosistemas o hábitats donde ha trabajado', dos:true,
+      o:['Bosque seco tropical','Bosque nuboso / de altura','Bosque de galería y ripario','Bosque de pino-roble','Manglar y estuario','Humedales continentales (lagos, lagunas, esteros)','Ríos y quebradas','Marino-costero y arrecifal','Zonas cafetaleras y agroecosistemas de sombra','Áreas urbanas y periurbanas','Zonas volcánicas y lávicas','Colecciones biológicas / trabajo de gabinete']},
+    {c:'2.5', id:'anios', t:'unica', r:true, l:'Años de experiencia en el grupo señalado', dos:true,
+      o:['Menos de 5','5–10','11–20','21–30','Más de 30']},
+    {c:'2.6', id:'naturaleza', t:'multiple', r:true, l:'Naturaleza de su trabajo', dos:true,
+      o:['Trabajo de campo y monitoreo','Taxonomía y sistemática','Curaduría de colecciones biológicas','Ecología de poblaciones o comunidades','Genética y biología molecular','Modelado y análisis espacial','Evaluaciones de estado de conservación','Manejo y restauración','Docencia y formación','Política y gestión ambiental']},
+    {c:'2.7', id:'evaluaciones', t:'unica', r:true, l:'¿Ha participado en evaluaciones formales de estado de conservación?',
+      o:['Sí, como evaluador o revisor de la Lista Roja de la UICN','Sí, en el listado oficial de especies amenazadas de El Salvador (MARN)','Sí, en otro listado nacional o regional','No, pero conozco la metodología','No']}
+  ]
+},
+{
+  cod:'03', clave:'evidencia', titulo:'Evidencia e información disponible',
+  intro:'Esta sección busca localizar información que hoy no está publicada y que podría incorporarse al documento con la debida atribución.',
+  items:[
+    {c:'3.1', id:'materiales', t:'multiple', r:true, l:'¿Posee o tiene acceso a alguno de estos materiales sobre su grupo en El Salvador?', dos:true,
+      o:['Registros de campo no publicados','Base de datos de ocurrencias o monitoreo','Colección biológica bajo su cuidado o consulta','Fotografías o material audiovisual con datos de localidad','Literatura gris (informes técnicos, consultorías, tesis dirigidas)','Publicaciones propias recientes (2005–2026)','Registros nuevos para el país aún no publicados','Manuscritos en preparación o en revisión','Ninguno de los anteriores']},
+    {c:'3.2', id:'compartir', t:'unica', r:true, l:'¿Estaría dispuesto a compartir esta información para el documento 2026?',
+      o:['Sí, sin restricciones, con la atribución correspondiente','Sí, pero solo datos agregados o resumidos','Sí, previo acuerdo escrito sobre el uso y la coautoría','Necesito consultarlo con mi institución','No en este momento']},
+    {c:'3.3', id:'publicaciones', t:'parrafo', l:'Publicaciones o informes suyos imprescindibles para este capítulo',
+      a:'Hasta cinco referencias o DOI.'},
+    {c:'3.4', id:'ultimo_listado', t:'unica', r:true, l:'¿Cuándo se publicó el último inventario o listado nacional actualizado de su grupo para El Salvador?',
+      o:['En los últimos 5 años','Hace 6–10 años','Hace 11–20 años','Hace más de 20 años','Nunca se ha publicado un listado nacional del grupo','Lo desconozco']}
+  ]
+},
+{
+  cod:'04', clave:'diagnostico', titulo:'Diagnóstico rápido',
+  intro:'Responda con base en su criterio experto sobre su grupo de especialidad en El Salvador. Estas cuatro respuestas se incorporan directamente al análisis, aun si no llegara a concretarse la entrevista.',
+  items:[
+    {c:'4.1', id:'estado_grupo', t:'unica', r:true, l:'Estado general de conservación de su grupo en el país',
+      o:['Favorable y estable','Favorable pero con presiones crecientes','Desfavorable pero estable','Desfavorable y en deterioro','Crítico','La información disponible no permite emitir un juicio']},
+    {c:'4.2', id:'suficiencia', t:'escala', r:true, l:'Suficiencia de la información disponible sobre su grupo',
+      min:1, max:5, rmin:'Prácticamente inexistente', rmax:'Suficiente para decidir'},
+    {c:'4.3', id:'amenazas', t:'multiple', r:true, max:3, dos:true,
+      l:'Las tres principales amenazas para su grupo en El Salvador', a:'Marque un máximo de tres.',
+      o:['Pérdida y conversión de hábitat','Fragmentación y pérdida de conectividad','Degradación por incendios','Contaminación del agua','Contaminación por agroquímicos','Expansión urbana e infraestructura','Cambio climático y eventos extremos','Extracción o aprovechamiento no regulado','Comercio ilegal de especies','Especies exóticas invasoras','Enfermedades emergentes','Sobrepesca o pesca incidental','Ausencia de monitoreo y vigilancia','Debilidad en la aplicación de la normativa','Vacío de investigación y de personal especializado']},
+    {c:'4.4', id:'vacio', t:'parrafo', r:true, l:'El vacío de conocimiento más urgente de resolver en su grupo',
+      a:'En dos o tres líneas.'}
+  ]
+},
+{
+  cod:'05', clave:'participacion', titulo:'Participación en el proceso de actualización',
+  items:[
+    {c:'5.1', id:'participa', t:'unica', r:true, dos:true,
+      l:'¿Le gustaría apoyar el proceso de actualización en relación a su especialidad?',
+      o:['Sí','No']},
+    {c:'5.2', id:'modalidad', t:'multiple', r:true, dos:true, si:{id:'participa', no:['No']},
+      l:'Alcance de su participación',
+      a:'¿En cuál o cuáles modalidades podría participar? Puede seleccionar varias.',
+      o:['Entrevista física','Entrevista virtual','Taller de consulta','Formulario']},
+    {c:'5.3', id:'revision', t:'unica', r:true, dos:true,
+      l:'¿Estaría dispuesto a revisar técnicamente el borrador del capítulo de su grupo?',
+      o:['Sí','Tal vez','No']},
+    {c:'5.4', id:'recomienda', t:'parrafo',
+      l:'Recomiende otros especialistas que deberían ser consultados',
+      a:'Nombre, grupo de especialidad, institución y correo si lo conoce.'}
+  ]
+},
+{
+  cod:'06', clave:'autorizaciones', titulo:'Autorizaciones y cierre',
+  items:[
+    {c:'6.1', id:'reconocimiento', t:'unica', r:true, l:'Reconocimiento en el documento',
+      o:['Autorizo que mi nombre, afiliación y especialidad aparezcan en la lista de especialistas consultados','Autorizo únicamente mi nombre, sin afiliación','Prefiero contribuir de forma anónima']},
+    {c:'6.2', id:'uso_aportes', t:'unica', r:true, l:'Uso de mis aportes técnicos',
+      o:['Pueden citarse como comunicación personal con mi nombre y fecha','Pueden citarse solo previa validación del texto por mi parte','Solo pueden usarse de forma agregada, sin atribución individual']},
+    {c:'6.3', id:'consentimiento', t:'multiple', r:true, l:'Tratamiento de datos de contacto',
+      o:['Acepto que mis datos de contacto se utilicen para coordinar esta consulta y para el directorio interno de especialistas, sin difusión pública.']},
+    {c:'6.4', id:'comentarios', t:'parrafo', l:'Comentarios adicionales o temas que el documento no debería omitir'}
+  ]
+}
+];
+
+/* ═══════════════════════════════════════════════════════════════
+   Aplicación
+   ═══════════════════════════════════════════════════════════════ */
+const $ = s => document.querySelector(s);
+const crear = (tag, cls) => { const e = document.createElement(tag); if(cls) e.className = cls; return e; };
+const escapar = s => String(s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+
+const FOLIO = 'SLV-2026-BD-' + Math.random().toString(36).slice(2,6).toUpperCase();
+let paso = 0;
+
+function logo(id, ruta, siglas){
+  const img = document.getElementById(id);
+  if(!img) return;
+  const respaldo = () => {
+    const caja = crear('div','logo faltante');
+    caja.textContent = siglas;
+    caja.title = 'Coloque el archivo ' + ruta + ' junto a este HTML.';
+    img.replaceWith(caja);
+  };
+  if(!ruta){ respaldo(); return; }
+  img.addEventListener('error', respaldo);
+  img.src = ruta;
+  // Red de seguridad: si al cargar la página la imagen quedó vacía
+  // (archivo ausente o caché rara), se cambia igual por el recuadro.
+  window.addEventListener('load', () => {
+    if(img.isConnected && img.complete && !img.naturalWidth) respaldo();
+  });
+}
+
+function iniciar(){
+  if(CONFIG.MODO_REVISION) $('#aviso-revision').hidden = false;
+  logo('logo-marn', CONFIG.LOGO_MARN, 'MARN');
+  logo('logo-uicn', CONFIG.LOGO_UICN, 'UICN');
+  $('#folio').textContent = FOLIO;
+  $('#pie-correo').textContent = CONFIG.CORREO;
+  $('#pie-correo').href = 'mailto:' + CONFIG.CORREO;
+  $('#pie-tel').textContent = CONFIG.TELEFONO;
+
+  const cont = $('#secciones');
+  ESQUEMA.forEach((sec, i) => {
+    const s = crear('section','seccion');
+    s.dataset.paso = i;
+
+    const cab = crear('div','cabecera-seccion');
+    cab.innerHTML = '<div class="cod">' + sec.cod + '</div><div><h2>' + escapar(sec.titulo) + '</h2>'
+      + (sec.intro ? '<p>' + escapar(sec.intro) + '</p>' : '') + '</div>';
+    s.appendChild(cab);
+
+    sec.items.forEach(it => s.appendChild(dibujarCampo(it)));
+    cont.appendChild(s);
+  });
+
+  const marcas = $('#marcas');
+  ESQUEMA.forEach(sec => {
+    const m = crear('span'); m.textContent = sec.cod; marcas.appendChild(m);
+  });
+
+  $('#btn-atras').addEventListener('click', atras);
+  $('#btn-siguiente').addEventListener('click', siguiente);
+  mostrar(0);
+}
+
+function dibujarCampo(it){
+  const d = crear('div','campo');
+  d.dataset.id = it.id;
+  if(it.si) d.dataset.condicion = JSON.stringify(it.si);
+
+  d.appendChild(Object.assign(crear('div','cod'), {textContent: it.c}));
+  const cuerpo = crear('div');
+
+  const rot = crear('label','rotulo');
+  rot.innerHTML = escapar(it.l) + (it.r ? ' <span class="req">·obligatoria</span>' : '');
+  cuerpo.appendChild(rot);
+  if(it.a){ const a = crear('div','ayuda'); a.innerHTML = escapar(it.a); cuerpo.appendChild(a); }
+
+  cuerpo.appendChild(control(it));
+
+  const err = crear('div','msg-error');
+  err.textContent = it.max ? 'Marque hasta ' + it.max + ' opciones.' : 'Esta respuesta es necesaria para continuar.';
+  cuerpo.appendChild(err);
+
+  d.appendChild(cuerpo);
+  return d;
+}
+
+/* ── selector taxonómico en cascada ──────────────────────────────
+   Reino → grupo (clase, agrupado por filo) → órdenes.
+   Se pueden registrar hasta MAX especialidades distintas.
+   ─────────────────────────────────────────────────────────────── */
+function controlTaxonomia(it){
+  const MAX = it.max || 3;
+  const w = crear('div','taxo');
+  const bloques = crear('div');
+  const mas = crear('button','taxo-mas');
+  mas.type = 'button';
+
+  w.appendChild(bloques);
+  w.appendChild(mas);
+
+  const renumerar = () => {
+    [...bloques.children].forEach((b, i) => {
+      b.querySelector('.taxo-num').textContent = 'Especialidad ' + (i + 1);
+      const q = b.querySelector('.taxo-quitar');
+      if(q) q.style.display = bloques.children.length > 1 ? '' : 'none';
+    });
+    mas.style.display = bloques.children.length >= MAX ? 'none' : '';
+    mas.textContent = '+  Agregar otra especialidad  ('
+      + bloques.children.length + ' de ' + MAX + ')';
+  };
+
+  const agregar = () => {
+    bloques.appendChild(bloqueTaxonomico(renumerar));
+    renumerar();
+  };
+
+  mas.addEventListener('click', agregar);
+  agregar();
+  return w;
+}
+
+function bloqueTaxonomico(alCambiar){
+  const b = crear('div','taxo-bloque');
+
+  const cab = crear('div','taxo-cab');
+  const num = crear('span','taxo-num');
+  const quitar = crear('button','taxo-quitar');
+  quitar.type = 'button'; quitar.textContent = 'quitar';
+  quitar.addEventListener('click', () => { b.remove(); alCambiar(); });
+  cab.appendChild(num); cab.appendChild(quitar);
+  b.appendChild(cab);
+
+  // nivel 1 — reino
+  const n1 = crear('div','taxo-nivel');
+  n1.innerHTML = '<span class="et">REINO</span>';
+  const sel = crear('select');
+  sel.appendChild(new Option('Seleccione…', ''));
+  TAXONOMIA.forEach(r => sel.appendChild(new Option(r.r, r.r)));
+  sel.appendChild(new Option('Otro / no listado', '__otro__'));
+  n1.appendChild(sel);
+  const otroTxt = crear('input');
+  otroTxt.type = 'text'; otroTxt.className = 'otro-txt';
+  otroTxt.placeholder = 'Indique el grupo';
+  otroTxt.style.display = 'none'; otroTxt.style.marginLeft = '0';
+  n1.appendChild(otroTxt);
+  b.appendChild(n1);
+
+  // nivel 2 — clase
+  const n2 = crear('div','taxo-nivel');
+  n2.style.display = 'none';
+  n2.innerHTML = '<span class="et">GRUPO DENTRO DEL REINO</span>';
+  const cajaClases = crear('div');
+  n2.appendChild(cajaClases);
+  b.appendChild(n2);
+
+  // nivel 3 — órdenes
+  const n3 = crear('div','taxo-nivel');
+  n3.style.display = 'none';
+  n3.innerHTML = '<span class="et">ÓRDENES · OPCIONAL</span>';
+  const cajaOrdenes = crear('div');
+  n3.appendChild(cajaOrdenes);
+  b.appendChild(n3);
+
+  const reinoDe = nombre => TAXONOMIA.find(r => r.r === nombre);
+
+  function pintarOrdenes(){
+    const clases = [...cajaClases.querySelectorAll('input:checked')].map(i => i.value);
+    const marcados = new Set([...cajaOrdenes.querySelectorAll('input:checked')].map(i => i.value));
+    cajaOrdenes.innerHTML = '';
+    if(!clases.length){
+      n3.style.display = 'none';
+      return;
+    }
+    const r = reinoDe(sel.value);
+    if(!r) return;
+    let hay = false;
+    r.f.forEach(filo => filo.c.forEach(cl => {
+      if(!clases.includes(cl.c) || !cl.o.length) return;
+      hay = true;
+      const h = crear('div','filo'); h.textContent = cl.c;
+      cajaOrdenes.appendChild(h);
+      const caja = crear('div','opciones dos');
+      cl.o.forEach(o => {
+        const l = crear('label','op');
+        const i = crear('input');
+        i.type = 'checkbox'; i.value = o; i.dataset.orden = '1';
+        if(marcados.has(o)) i.checked = true;
+        const sp = crear('span'); sp.textContent = o;
+        l.appendChild(i); l.appendChild(sp);
+        caja.appendChild(l);
+      });
+      cajaOrdenes.appendChild(caja);
+    }));
+    n3.style.display = hay ? '' : 'none';
+  }
+
+  function pintarClases(){
+    cajaClases.innerHTML = '';
+    const r = reinoDe(sel.value);
+    if(!r){ n2.style.display = 'none'; n3.style.display = 'none'; return; }
+    r.f.forEach(filo => {
+      const h = crear('div','filo'); h.textContent = filo.n;
+      cajaClases.appendChild(h);
+      const caja = crear('div','opciones dos');
+      filo.c.forEach(cl => {
+        const l = crear('label','op');
+        const i = crear('input');
+        i.type = 'checkbox'; i.value = cl.c; i.dataset.clase = '1';
+        i.addEventListener('change', () => {
+          pintarOrdenes();
+          b.closest('.campo').classList.remove('error');
+        });
+        const sp = crear('span'); sp.textContent = cl.c;
+        l.appendChild(i); l.appendChild(sp);
+        caja.appendChild(l);
+      });
+      cajaClases.appendChild(caja);
+    });
+    n2.style.display = '';
+    pintarOrdenes();
+  }
+
+  sel.addEventListener('change', () => {
+    const otro = sel.value === '__otro__';
+    otroTxt.style.display = otro ? 'block' : 'none';
+    if(otro){
+      cajaClases.innerHTML = ''; cajaOrdenes.innerHTML = '';
+      n2.style.display = 'none'; n3.style.display = 'none';
+      otroTxt.focus();
+    } else {
+      otroTxt.value = '';
+      pintarClases();
+    }
+    b.closest('.campo').classList.remove('error');
+  });
+
+  return b;
+}
+
+/** Lee un bloque como objeto {reino, grupos, ordenes}. */
+function leerTaxonomia(campo){
+  return [...campo.querySelectorAll('.taxo-bloque')].map(b => {
+    const sel = b.querySelector('select');
+    const otro = b.querySelector('.otro-txt');
+    const reino = sel.value === '__otro__'
+      ? (otro.value.trim() ? 'Otro: ' + otro.value.trim() : '')
+      : sel.value;
+    return {
+      reino: reino,
+      grupos:  [...b.querySelectorAll('input[data-clase]:checked')].map(i => i.value),
+      ordenes: [...b.querySelectorAll('input[data-orden]:checked')].map(i => i.value)
+    };
+  }).filter(e => e.reino);
+}
+
+/** Texto legible de una especialidad, para la hoja de cálculo. */
+function textoTaxonomia(e){
+  let t = e.reino;
+  if(e.grupos.length)  t += ' › ' + e.grupos.join(', ');
+  if(e.ordenes.length) t += ' › ' + e.ordenes.join(', ');
+  return t;
+}
+
+function control(it){
+  if(it.t === 'taxonomia') return controlTaxonomia(it);
+
+  if(it.t === 'texto' || it.t === 'correo' || it.t === 'tel'){
+    const i = crear('input');
+    i.type = it.t === 'correo' ? 'email' : (it.t === 'tel' ? 'tel' : 'text');
+    i.name = it.id; if(it.ph) i.placeholder = it.ph;
+    if(!it.libre) return i;
+
+    // Campo de texto con atajo: marcar la casilla lo llena y lo bloquea.
+    const w = crear('div');
+    w.appendChild(i);
+    const lab = crear('label','libre');
+    const chk = crear('input'); chk.type = 'checkbox';
+    const sp = crear('span'); sp.textContent = it.libre.etiqueta;
+    lab.appendChild(chk); lab.appendChild(sp);
+    chk.addEventListener('change', () => {
+      if(chk.checked){ i.dataset.previo = i.value; i.value = it.libre.valor; i.disabled = true; }
+      else { i.disabled = false; i.value = i.dataset.previo || ''; i.focus(); }
+      w.closest('.campo').classList.remove('error');
+    });
+    w.appendChild(lab);
+    return w;
+  }
+  if(it.t === 'parrafo'){
+    const i = crear('textarea'); i.name = it.id; return i;
+  }
+  if(it.t === 'lista'){
+    const s = crear('select'); s.name = it.id;
+    s.appendChild(new Option('Seleccione…',''));
+    it.o.forEach(o => s.appendChild(new Option(o, o)));
+    return s;
+  }
+  if(it.t === 'escala'){
+    const w = crear('div');
+    const fila = crear('div','escala');
+    for(let n = it.min; n <= it.max; n++){
+      const b = crear('button','pt'); b.type = 'button'; b.textContent = n; b.dataset.valor = n;
+      b.addEventListener('click', () => {
+        fila.querySelectorAll('.pt').forEach(x => x.classList.remove('sel'));
+        b.classList.add('sel');
+        w.dataset.valor = n;
+        w.closest('.campo').classList.remove('error');
+      });
+      fila.appendChild(b);
+    }
+    w.appendChild(fila);
+    const rots = crear('div','escala-rot');
+    rots.innerHTML = '<span>' + escapar(it.rmin) + '</span><span>' + escapar(it.rmax) + '</span>';
+    w.appendChild(rots);
+    w.dataset.escala = it.id;
+    return w;
+  }
+
+  // única / múltiple
+  const w = crear('div');
+  const tipo = it.t === 'unica' ? 'radio' : 'checkbox';
+  const grupos = it.g || [{n:null, o:it.o}];
+
+  grupos.forEach(g => {
+    if(g.n){ const h = crear('div','grupo-titulo'); h.textContent = g.n; w.appendChild(h); }
+    const caja = crear('div', 'opciones' + (it.dos ? ' dos' : ''));
+    g.o.forEach(o => caja.appendChild(opcion(it, tipo, o)));
+    w.appendChild(caja);
+  });
+
+  if(it.otro){
+    const caja = crear('div','opciones');
+    const lab = opcion(it, tipo, 'Otro', true);
+    caja.appendChild(lab);
+    const txt = crear('input'); txt.type = 'text'; txt.className = 'otro-txt';
+    txt.placeholder = 'Especifique'; txt.dataset.otroDe = it.id; txt.style.display = 'none';
+    const marcaOtro = lab.querySelector('input');
+    // Un radio no dispara «change» al desmarcarse, así que se vigila todo el grupo.
+    w.addEventListener('change', e => {
+      if(e.target.name !== it.id) return;
+      const activo = marcaOtro.checked;
+      txt.style.display = activo ? 'block' : 'none';
+      if(activo && e.target === marcaOtro) txt.focus();
+      if(!activo) txt.value = '';
+    });
+    caja.appendChild(txt);
+    w.appendChild(caja);
+  }
+
+  if(it.max){
+    const c = crear('div','contador');
+    c.dataset.contadorDe = it.id;
+    c.textContent = '0 de ' + it.max + ' seleccionadas';
+    w.appendChild(c);
+  }
+  return w;
+}
+
+function opcion(it, tipo, texto, esOtro){
+  const l = crear('label','op');
+  const i = crear('input');
+  i.type = tipo; i.name = it.id; i.value = texto;
+  if(esOtro) i.dataset.esOtro = '1';
+  i.addEventListener('change', () => {
+    const campo = l.closest('.campo');
+    if(it.max) aplicarTope(campo, it.max);
+    if(!it.max || contarMarcadas(campo) <= it.max) campo.classList.remove('error');
+  });
+  const s = crear('span'); s.textContent = texto;
+  l.appendChild(i); l.appendChild(s);
+  return l;
+}
+
+const contarMarcadas = campo => campo.querySelectorAll('input[type=checkbox]:checked').length;
+
+function aplicarTope(campo, max){
+  const n = contarMarcadas(campo);
+  const cont = campo.querySelector('[data-contador-de]');
+  if(cont) cont.textContent = n + ' de ' + max + ' seleccionadas';
+  campo.querySelectorAll('input[type=checkbox]').forEach(i => {
+    const bloquear = n >= max && !i.checked;
+    i.disabled = bloquear;
+    i.closest('.op').classList.toggle('deshabilitada', bloquear);
+  });
+}
+
+/* ── condicionales ─────────────────────────────────────────── */
+function refrescarCondiciones(){
+  document.querySelectorAll('.campo[data-condicion]').forEach(campo => {
+    const c = JSON.parse(campo.dataset.condicion);
+    const v = leerCampo(c.id);
+    const oculto = c.no && c.no.includes(v);
+    campo.style.display = oculto ? 'none' : '';
+    if(oculto) limpiarCampo(campo);
+  });
+}
+
+function leerCampo(id){
+  const el = document.querySelector('[name="' + id + '"]');
+  if(!el) return '';
+  if(el.type === 'radio'){
+    const m = document.querySelector('[name="' + id + '"]:checked');
+    return m ? m.value : '';
+  }
+  return el.value;
+}
+
+function limpiarCampo(campo){
+  campo.querySelectorAll('input,textarea,select').forEach(i => {
+    if(i.type === 'checkbox' || i.type === 'radio') i.checked = false;
+    else i.value = '';
+  });
+  campo.classList.remove('error');
+}
+
+/* ── navegación ────────────────────────────────────────────── */
+function mostrar(n){
+  paso = n;
+  document.querySelectorAll('.seccion').forEach((s, i) => s.classList.toggle('activa', i === n));
+  $('#membrete').style.display = n === 0 ? '' : 'none';
+  $('#btn-atras').disabled = n === 0;
+  $('#btn-atras').style.opacity = n === 0 ? '.35' : '1';
+  $('#btn-atras').style.cursor = n === 0 ? 'default' : 'pointer';
+  $('#btn-siguiente').textContent = n === ESQUEMA.length - 1 ? 'Enviar registro' : 'Siguiente  \u2192';
+  $('#paso-info').textContent = 'Sección ' + (n + 1) + ' de ' + ESQUEMA.length;
+  $('#barra').style.width = ((n) / ESQUEMA.length * 100) + '%';
+  document.querySelectorAll('#marcas span').forEach((m, i) => m.classList.toggle('on', i <= n));
+  $('#aviso-nav').classList.remove('visible');
+  refrescarCondiciones();
+  window.scrollTo({top:0, behavior:'smooth'});
+}
+
+function atras(){ if(paso > 0) mostrar(paso - 1); }
+
+function siguiente(){
+  if(!validar(paso)) return;
+  if(paso < ESQUEMA.length - 1) mostrar(paso + 1);
+  else enviar();
+}
+
+function validar(n){
+  if(CONFIG.MODO_REVISION) return true;
+  const sec = ESQUEMA[n];
+  const nodo = document.querySelector('.seccion[data-paso="' + n + '"]');
+  let primerFallo = null;
+
+  sec.items.forEach(it => {
+    const campo = nodo.querySelector('.campo[data-id="' + it.id + '"]');
+    if(!campo || campo.style.display === 'none'){ return; }
+    campo.classList.remove('error');
+    const err = campo.querySelector('.msg-error');
+    let falla = false;
+
+    if(it.t === 'taxonomia'){
+      const esp = leerTaxonomia(campo);
+      if(it.r && !esp.length){
+        err.textContent = 'Elija al menos un reino para continuar.'; falla = true;
+      } else if(esp.some(e => !/^Otro: /.test(e.reino) && !e.grupos.length)){
+        err.textContent = 'Marque al menos un grupo dentro del reino que eligió.'; falla = true;
+      }
+      if(falla){ campo.classList.add('error'); if(!primerFallo) primerFallo = campo; }
+      return;
+    }
+    if(it.max && contarMarcadas(campo) > it.max){
+      err.textContent = 'Marque hasta ' + it.max + ' opciones.'; falla = true;
+    }
+    if(it.r && !falla){
+      const v = valorDe(it, campo);
+      const vacio = Array.isArray(v) ? v.length === 0 : !String(v).trim();
+      if(vacio){ err.textContent = 'Esta respuesta es necesaria para continuar.'; falla = true; }
+      else if(it.t === 'correo' && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v)){
+        err.textContent = 'Revise la dirección: falta el @ o el dominio.'; falla = true;
+      }
+    }
+    if(!it.r && it.t === 'correo'){
+      const v = valorDe(it, campo);
+      if(v && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v)){
+        err.textContent = 'Revise la dirección: falta el @ o el dominio.'; falla = true;
+      }
+    }
+    if(falla){ campo.classList.add('error'); if(!primerFallo) primerFallo = campo; }
+  });
+
+  const aviso = $('#aviso-nav');
+  if(primerFallo){
+    aviso.textContent = 'Faltan respuestas en esta sección. Los campos señalados están marcados abajo.';
+    aviso.classList.add('visible');
+    if(primerFallo.scrollIntoView) primerFallo.scrollIntoView({block:'center', behavior:'smooth'});
+    const f = primerFallo.querySelector('input,select,textarea,button');
+    if(f) f.focus({preventScroll:true});
+    return false;
+  }
+  aviso.classList.remove('visible');
+  return true;
+}
+
+function valorDe(it, campo){
+  if(it.t === 'taxonomia'){
+    return leerTaxonomia(campo).map(textoTaxonomia);
+  }
+  if(it.t === 'escala'){
+    const w = campo.querySelector('[data-escala]');
+    return w && w.dataset.valor ? w.dataset.valor : '';
+  }
+  if(it.t === 'unica'){
+    const m = campo.querySelector('input[type=radio]:checked');
+    if(!m) return '';
+    if(m.dataset.esOtro){
+      const t = campo.querySelector('[data-otro-de]');
+      return t && t.value.trim() ? 'Otro: ' + t.value.trim() : 'Otro';
+    }
+    return m.value;
+  }
+  if(it.t === 'multiple'){
+    const vs = [...campo.querySelectorAll('input[type=checkbox]:checked')].map(i => {
+      if(i.dataset.esOtro){
+        const t = campo.querySelector('[data-otro-de]');
+        return t && t.value.trim() ? 'Otro: ' + t.value.trim() : 'Otro';
+      }
+      return i.value;
+    });
+    return vs;
+  }
+  const el = campo.querySelector('input,select,textarea');
+  return el ? el.value.trim() : '';
+}
+
+function recolectar(){
+  const datos = {
+    folio: FOLIO,
+    enviado: new Date().toISOString(),
+    respuestas: {}
+  };
+  ESQUEMA.forEach((sec, i) => {
+    const nodo = document.querySelector('.seccion[data-paso="' + i + '"]');
+    sec.items.forEach(it => {
+      const campo = nodo.querySelector('.campo[data-id="' + it.id + '"]');
+      if(!campo) return;
+      const v = campo.style.display === 'none' ? (it.t === 'multiple' ? [] : '') : valorDe(it, campo);
+      datos.respuestas[it.id] = { codigo: it.c, seccion: sec.titulo, pregunta: it.l, valor: v };
+
+      // La taxonomía se abre además en columnas propias: así la hoja
+      // puede tabular cobertura por reino, grupo y orden sin partir texto.
+      if(it.t === 'taxonomia'){
+        const esp = campo.style.display === 'none' ? [] : leerTaxonomia(campo);
+        const unico = a => [...new Set(a)];
+        datos.respuestas[it.id + '_reinos'] = {
+          codigo: it.c + 'a', seccion: sec.titulo, pregunta: 'Reinos',
+          valor: unico(esp.map(e => e.reino)) };
+        datos.respuestas[it.id + '_grupos'] = {
+          codigo: it.c + 'b', seccion: sec.titulo, pregunta: 'Grupos (clase)',
+          valor: unico(esp.flatMap(e => e.grupos)) };
+        datos.respuestas[it.id + '_ordenes'] = {
+          codigo: it.c + 'c', seccion: sec.titulo, pregunta: 'Órdenes',
+          valor: unico(esp.flatMap(e => e.ordenes)) };
+      }
+    });
+  });
+  return datos;
+}
+
+/* ── envío ─────────────────────────────────────────────────── */
+async function enviar(){
+  const btn = $('#btn-siguiente');
+  const datos = recolectar();
+  let enviado = false, motivo = '', sinConfirmar = false;
+
+  if(CONFIG.ENDPOINT){
+    btn.disabled = true; btn.textContent = 'Enviando…';
+    const cuerpo = JSON.stringify(datos);
+    // text/plain evita la verificación previa de CORS, que Apps Script
+    // no atiende. Es el modo que funciona desde un sitio en GitHub Pages.
+    const opciones = { method:'POST', headers:{'Content-Type':'text/plain;charset=utf-8'}, body: cuerpo };
+    try{
+      const r = await fetch(CONFIG.ENDPOINT, opciones);
+      enviado = r.ok;
+      if(!r.ok) motivo = 'El servidor respondió con el código ' + r.status + '.';
+    }catch(e){
+      // Segundo intento a ciegas: el dato llega, pero no se puede leer
+      // la respuesta. Se avisa con honestidad en la boleta.
+      try{
+        await fetch(CONFIG.ENDPOINT, Object.assign({}, opciones, { mode:'no-cors' }));
+        enviado = true; sinConfirmar = true;
+      }catch(e2){
+        motivo = 'No se pudo alcanzar el servidor. Puede que no haya conexión.';
+      }
+    }
+    btn.disabled = false;
+  }
+
+  boleta(datos, enviado, motivo, sinConfirmar);
+}
+
+function boleta(datos, enviado, motivo, sinConfirmar){
+  document.querySelectorAll('.seccion').forEach(s => s.classList.remove('activa'));
+  $('#nav').style.display = 'none';
+  $('#membrete').style.display = 'none';
+  $('#barra').style.width = '100%';
+  document.querySelectorAll('#marcas span').forEach(m => m.classList.add('on'));
+
+  const b = $('#boleta');
+  const hayEndpoint = !!CONFIG.ENDPOINT;
+
+  let cabeza;
+  if(enviado && sinConfirmar){
+    cabeza = '<p>Sus respuestas fueron enviadas, aunque el navegador no pudo confirmar la recepción. '
+      + 'Si desea quedarse tranquilo, descargue el registro con el botón de abajo y guárdelo.</p>';
+  }else if(enviado){
+    cabeza = '<p>Sus respuestas quedaron registradas. Si manifestó disposición para participar, el equipo le escribirá para coordinar la modalidad que eligió.</p>';
+  }else if(hayEndpoint){
+    cabeza = '<p>El registro se completó, pero no llegó al servidor. ' + escapar(motivo)
+      + ' Descargue el archivo con el botón de abajo y envíelo a <a href="mailto:' + CONFIG.CORREO + '">'
+      + CONFIG.CORREO + '</a>; sus respuestas no se pierden.</p>';
+  }else{
+    cabeza = '<p>Su registro está completo. Descárguelo con el botón de abajo y envíelo a <a href="mailto:'
+      + CONFIG.CORREO + '">' + CONFIG.CORREO + '</a>.</p>';
+  }
+
+  let html = '<div class="sello"><div class="cod">Registro ' + FOLIO + '</div>'
+    + '<h2>' + (enviado ? 'Registro recibido' : 'Registro completo') + '</h2>' + cabeza + '</div>'
+    + '<div class="resumen">';
+
+  ESQUEMA.forEach(sec => {
+    html += '<h3>' + escapar(sec.titulo) + '</h3><dl>';
+    sec.items.forEach(it => {
+      const r = datos.respuestas[it.id];
+      let v = r ? r.valor : '';
+      if(Array.isArray(v)) v = v.join(it.t === 'taxonomia' ? '   |   ' : ' · ');
+      const vacio = !String(v).trim();
+      html += '<dt>' + escapar(it.l) + '</dt><dd class="' + (vacio ? 'vacio' : '') + '">'
+        + (vacio ? 'sin respuesta' : escapar(v)) + '</dd>';
+    });
+    html += '</dl>';
+  });
+
+  html += '</div><div class="barra-nav">'
+    + '<button type="button" class="btn-sec" id="btn-volver">Volver al formulario</button>'
+    + '<button type="button" class="btn" id="btn-descargar">Descargar mis respuestas</button>'
+    + '<button type="button" class="btn-sec" id="btn-imprimir">Imprimir</button></div>';
+
+  b.innerHTML = html;
+  b.classList.add('activa');
+  $('#btn-volver').addEventListener('click', volverAlFormulario);
+  $('#btn-descargar').addEventListener('click', () => descargar(datos));
+  $('#btn-imprimir').addEventListener('click', () => window.print());
+  window.scrollTo({top:0, behavior:'smooth'});
+}
+
+/** Regresa de la boleta al cuestionario, con todo lo respondido intacto. */
+function volverAlFormulario(){
+  const b = $('#boleta');
+  b.classList.remove('activa');
+  b.innerHTML = '';
+  $('#nav').style.display = '';
+  mostrar(ESQUEMA.length - 1);
+}
+
+function descargar(datos){
+  const blob = new Blob([JSON.stringify(datos, null, 2)], {type:'application/json'});
+  const a = crear('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = datos.folio + '.json';
+  document.body.appendChild(a); a.click();
+  setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 800);
+}
+
+document.addEventListener('change', e => {
+  if(e.target.name === 'participa') refrescarCondiciones();
+});
+
+iniciar();
+</script>
+</body>
+</html>
