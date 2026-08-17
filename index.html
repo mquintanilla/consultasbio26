@@ -426,7 +426,7 @@ const CONFIG = {
 
   // URL de la aplicación web de Apps Script (ver receptor_respuestas.gs).
   // Déjelo vacío para que el formulario solo descargue el registro.
-  ENDPOINT: 'https://script.google.com/macros/s/AKfycby-JFLxzFYKWqzky1rTJeSqz_GHPf6OvSfesH01LsPYFRR3JskNZ4WaDDA0s-yxxnyP/exec',
+  ENDPOINT: 'https://script.google.com/macros/s/AKfycbwwH1LLZuMLXddYvbX_xUiFocy2mO9xrMFYUTWf04kfNssP2rrA6H_c2pg5XPumt_1p/exec',
 
   // ─────────────────────────────────────────────────────────────
   // MODO REVISIÓN
@@ -1203,8 +1203,9 @@ function boleta(datos, enviado, motivo, sinConfirmar){
 
   let cabeza;
   if(enviado && sinConfirmar){
-    cabeza = '<p>Sus respuestas fueron enviadas, aunque el navegador no pudo confirmar la recepción. '
-      + 'Si desea quedarse tranquilo, descargue el registro con el botón de abajo y guárdelo.</p>';
+    cabeza = '<p>Sus respuestas salieron hacia el servidor, pero el navegador no pudo confirmar '
+      + 'que llegaran. Por favor descargue el registro con el botón de abajo y envíelo a '
+      + '<a href="mailto:' + CONFIG.CORREO + '">' + CONFIG.CORREO + '</a> para asegurar que quede constancia.</p>';
   }else if(enviado){
     cabeza = '<p>Sus respuestas quedaron registradas. Si manifestó disposición para participar, el equipo le escribirá para coordinar la modalidad que eligió.</p>';
   }else if(hayEndpoint){
@@ -1217,7 +1218,7 @@ function boleta(datos, enviado, motivo, sinConfirmar){
   }
 
   let html = '<div class="sello"><div class="cod">Registro ' + FOLIO + '</div>'
-    + '<h2>' + (enviado ? 'Registro recibido' : 'Registro completo') + '</h2>' + cabeza + '</div>'
+    + '<h2>' + (enviado && !sinConfirmar ? 'Registro recibido' : 'Registro completo') + '</h2>' + cabeza + '</div>'
     + '<div class="resumen">';
 
   ESQUEMA.forEach(sec => {
